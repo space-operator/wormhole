@@ -5,6 +5,24 @@ import * as Long from "long";
 
 export const protobufPackage = "wormhole_foundation.wormchain.wormhole";
 
+export interface MsgCreateAllowlistEntryRequest {
+  /** signer should be a guardian validator in a current set or future set. */
+  signer: string;
+  /** the address to allowlist */
+  address: string;
+  /** optional human readable name for the entry */
+  name: string;
+}
+
+export interface MsgDeleteAllowlistEntryRequest {
+  /** signer should be a guardian validator in a current set or future set. */
+  signer: string;
+  /** the address allowlist to remove */
+  address: string;
+}
+
+export interface MsgAllowlistResponse {}
+
 export interface MsgExecuteGovernanceVAA {
   vaa: Uint8Array;
   signer: string;
@@ -32,6 +50,8 @@ export interface MsgStoreCode {
 export interface MsgStoreCodeResponse {
   /** CodeID is the reference to the stored WASM code */
   code_id: number;
+  /** Checksum is the sha256 hash of the stored code */
+  checksum: Uint8Array;
 }
 
 /** Same as from x/wasmd but with vaa auth */
@@ -44,7 +64,7 @@ export interface MsgInstantiateContract {
   label: string;
   /** Msg json encoded message to be passed to the contract on instantiation */
   msg: Uint8Array;
-  /** vaa must be governance msg with payload containing sha3 256 hash of `bigEndian(code_id) || label || msg` */
+  /** vaa must be governance msg with payload containing keccak256 hash(hash(hash(BigEndian(CodeID)), Label), Msg) */
   vaa: Uint8Array;
 }
 
@@ -54,6 +74,260 @@ export interface MsgInstantiateContractResponse {
   /** Data contains base64-encoded bytes to returned from the contract */
   data: Uint8Array;
 }
+
+/** MsgMigrateContract runs a code upgrade/ downgrade for a smart contract */
+export interface MsgMigrateContract {
+  /** Sender is the actor that signs the messages */
+  signer: string;
+  /** Contract is the address of the smart contract */
+  contract: string;
+  /** CodeID references the new WASM code */
+  code_id: number;
+  /** Msg json encoded message to be passed to the contract on migration */
+  msg: Uint8Array;
+  /** vaa must be governance msg with payload containing keccak256 hash(hash(hash(BigEndian(CodeID)), Contract), Msg) */
+  vaa: Uint8Array;
+}
+
+/** MsgMigrateContractResponse returns contract migration result data. */
+export interface MsgMigrateContractResponse {
+  /**
+   * Data contains same raw bytes returned as data from the wasm contract.
+   * (May be empty)
+   */
+  data: Uint8Array;
+}
+
+const baseMsgCreateAllowlistEntryRequest: object = {
+  signer: "",
+  address: "",
+  name: "",
+};
+
+export const MsgCreateAllowlistEntryRequest = {
+  encode(
+    message: MsgCreateAllowlistEntryRequest,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.signer !== "") {
+      writer.uint32(10).string(message.signer);
+    }
+    if (message.address !== "") {
+      writer.uint32(18).string(message.address);
+    }
+    if (message.name !== "") {
+      writer.uint32(26).string(message.name);
+    }
+    return writer;
+  },
+
+  decode(
+    input: Reader | Uint8Array,
+    length?: number
+  ): MsgCreateAllowlistEntryRequest {
+    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseMsgCreateAllowlistEntryRequest,
+    } as MsgCreateAllowlistEntryRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.signer = reader.string();
+          break;
+        case 2:
+          message.address = reader.string();
+          break;
+        case 3:
+          message.name = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MsgCreateAllowlistEntryRequest {
+    const message = {
+      ...baseMsgCreateAllowlistEntryRequest,
+    } as MsgCreateAllowlistEntryRequest;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = String(object.signer);
+    } else {
+      message.signer = "";
+    }
+    if (object.address !== undefined && object.address !== null) {
+      message.address = String(object.address);
+    } else {
+      message.address = "";
+    }
+    if (object.name !== undefined && object.name !== null) {
+      message.name = String(object.name);
+    } else {
+      message.name = "";
+    }
+    return message;
+  },
+
+  toJSON(message: MsgCreateAllowlistEntryRequest): unknown {
+    const obj: any = {};
+    message.signer !== undefined && (obj.signer = message.signer);
+    message.address !== undefined && (obj.address = message.address);
+    message.name !== undefined && (obj.name = message.name);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<MsgCreateAllowlistEntryRequest>
+  ): MsgCreateAllowlistEntryRequest {
+    const message = {
+      ...baseMsgCreateAllowlistEntryRequest,
+    } as MsgCreateAllowlistEntryRequest;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = object.signer;
+    } else {
+      message.signer = "";
+    }
+    if (object.address !== undefined && object.address !== null) {
+      message.address = object.address;
+    } else {
+      message.address = "";
+    }
+    if (object.name !== undefined && object.name !== null) {
+      message.name = object.name;
+    } else {
+      message.name = "";
+    }
+    return message;
+  },
+};
+
+const baseMsgDeleteAllowlistEntryRequest: object = { signer: "", address: "" };
+
+export const MsgDeleteAllowlistEntryRequest = {
+  encode(
+    message: MsgDeleteAllowlistEntryRequest,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.signer !== "") {
+      writer.uint32(10).string(message.signer);
+    }
+    if (message.address !== "") {
+      writer.uint32(18).string(message.address);
+    }
+    return writer;
+  },
+
+  decode(
+    input: Reader | Uint8Array,
+    length?: number
+  ): MsgDeleteAllowlistEntryRequest {
+    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseMsgDeleteAllowlistEntryRequest,
+    } as MsgDeleteAllowlistEntryRequest;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.signer = reader.string();
+          break;
+        case 2:
+          message.address = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MsgDeleteAllowlistEntryRequest {
+    const message = {
+      ...baseMsgDeleteAllowlistEntryRequest,
+    } as MsgDeleteAllowlistEntryRequest;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = String(object.signer);
+    } else {
+      message.signer = "";
+    }
+    if (object.address !== undefined && object.address !== null) {
+      message.address = String(object.address);
+    } else {
+      message.address = "";
+    }
+    return message;
+  },
+
+  toJSON(message: MsgDeleteAllowlistEntryRequest): unknown {
+    const obj: any = {};
+    message.signer !== undefined && (obj.signer = message.signer);
+    message.address !== undefined && (obj.address = message.address);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<MsgDeleteAllowlistEntryRequest>
+  ): MsgDeleteAllowlistEntryRequest {
+    const message = {
+      ...baseMsgDeleteAllowlistEntryRequest,
+    } as MsgDeleteAllowlistEntryRequest;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = object.signer;
+    } else {
+      message.signer = "";
+    }
+    if (object.address !== undefined && object.address !== null) {
+      message.address = object.address;
+    } else {
+      message.address = "";
+    }
+    return message;
+  },
+};
+
+const baseMsgAllowlistResponse: object = {};
+
+export const MsgAllowlistResponse = {
+  encode(_: MsgAllowlistResponse, writer: Writer = Writer.create()): Writer {
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): MsgAllowlistResponse {
+    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMsgAllowlistResponse } as MsgAllowlistResponse;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(_: any): MsgAllowlistResponse {
+    const message = { ...baseMsgAllowlistResponse } as MsgAllowlistResponse;
+    return message;
+  },
+
+  toJSON(_: MsgAllowlistResponse): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  fromPartial(_: DeepPartial<MsgAllowlistResponse>): MsgAllowlistResponse {
+    const message = { ...baseMsgAllowlistResponse } as MsgAllowlistResponse;
+    return message;
+  },
+};
 
 const baseMsgExecuteGovernanceVAA: object = { signer: "" };
 
@@ -433,6 +707,9 @@ export const MsgStoreCodeResponse = {
     if (message.code_id !== 0) {
       writer.uint32(8).uint64(message.code_id);
     }
+    if (message.checksum.length !== 0) {
+      writer.uint32(18).bytes(message.checksum);
+    }
     return writer;
   },
 
@@ -445,6 +722,9 @@ export const MsgStoreCodeResponse = {
       switch (tag >>> 3) {
         case 1:
           message.code_id = longToNumber(reader.uint64() as Long);
+          break;
+        case 2:
+          message.checksum = reader.bytes();
           break;
         default:
           reader.skipType(tag & 7);
@@ -461,12 +741,19 @@ export const MsgStoreCodeResponse = {
     } else {
       message.code_id = 0;
     }
+    if (object.checksum !== undefined && object.checksum !== null) {
+      message.checksum = bytesFromBase64(object.checksum);
+    }
     return message;
   },
 
   toJSON(message: MsgStoreCodeResponse): unknown {
     const obj: any = {};
     message.code_id !== undefined && (obj.code_id = message.code_id);
+    message.checksum !== undefined &&
+      (obj.checksum = base64FromBytes(
+        message.checksum !== undefined ? message.checksum : new Uint8Array()
+      ));
     return obj;
   },
 
@@ -476,6 +763,11 @@ export const MsgStoreCodeResponse = {
       message.code_id = object.code_id;
     } else {
       message.code_id = 0;
+    }
+    if (object.checksum !== undefined && object.checksum !== null) {
+      message.checksum = object.checksum;
+    } else {
+      message.checksum = new Uint8Array();
     }
     return message;
   },
@@ -702,6 +994,204 @@ export const MsgInstantiateContractResponse = {
   },
 };
 
+const baseMsgMigrateContract: object = { signer: "", contract: "", code_id: 0 };
+
+export const MsgMigrateContract = {
+  encode(
+    message: MsgMigrateContract,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.signer !== "") {
+      writer.uint32(10).string(message.signer);
+    }
+    if (message.contract !== "") {
+      writer.uint32(18).string(message.contract);
+    }
+    if (message.code_id !== 0) {
+      writer.uint32(24).uint64(message.code_id);
+    }
+    if (message.msg.length !== 0) {
+      writer.uint32(34).bytes(message.msg);
+    }
+    if (message.vaa.length !== 0) {
+      writer.uint32(50).bytes(message.vaa);
+    }
+    return writer;
+  },
+
+  decode(input: Reader | Uint8Array, length?: number): MsgMigrateContract {
+    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseMsgMigrateContract } as MsgMigrateContract;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.signer = reader.string();
+          break;
+        case 2:
+          message.contract = reader.string();
+          break;
+        case 3:
+          message.code_id = longToNumber(reader.uint64() as Long);
+          break;
+        case 4:
+          message.msg = reader.bytes();
+          break;
+        case 6:
+          message.vaa = reader.bytes();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MsgMigrateContract {
+    const message = { ...baseMsgMigrateContract } as MsgMigrateContract;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = String(object.signer);
+    } else {
+      message.signer = "";
+    }
+    if (object.contract !== undefined && object.contract !== null) {
+      message.contract = String(object.contract);
+    } else {
+      message.contract = "";
+    }
+    if (object.code_id !== undefined && object.code_id !== null) {
+      message.code_id = Number(object.code_id);
+    } else {
+      message.code_id = 0;
+    }
+    if (object.msg !== undefined && object.msg !== null) {
+      message.msg = bytesFromBase64(object.msg);
+    }
+    if (object.vaa !== undefined && object.vaa !== null) {
+      message.vaa = bytesFromBase64(object.vaa);
+    }
+    return message;
+  },
+
+  toJSON(message: MsgMigrateContract): unknown {
+    const obj: any = {};
+    message.signer !== undefined && (obj.signer = message.signer);
+    message.contract !== undefined && (obj.contract = message.contract);
+    message.code_id !== undefined && (obj.code_id = message.code_id);
+    message.msg !== undefined &&
+      (obj.msg = base64FromBytes(
+        message.msg !== undefined ? message.msg : new Uint8Array()
+      ));
+    message.vaa !== undefined &&
+      (obj.vaa = base64FromBytes(
+        message.vaa !== undefined ? message.vaa : new Uint8Array()
+      ));
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<MsgMigrateContract>): MsgMigrateContract {
+    const message = { ...baseMsgMigrateContract } as MsgMigrateContract;
+    if (object.signer !== undefined && object.signer !== null) {
+      message.signer = object.signer;
+    } else {
+      message.signer = "";
+    }
+    if (object.contract !== undefined && object.contract !== null) {
+      message.contract = object.contract;
+    } else {
+      message.contract = "";
+    }
+    if (object.code_id !== undefined && object.code_id !== null) {
+      message.code_id = object.code_id;
+    } else {
+      message.code_id = 0;
+    }
+    if (object.msg !== undefined && object.msg !== null) {
+      message.msg = object.msg;
+    } else {
+      message.msg = new Uint8Array();
+    }
+    if (object.vaa !== undefined && object.vaa !== null) {
+      message.vaa = object.vaa;
+    } else {
+      message.vaa = new Uint8Array();
+    }
+    return message;
+  },
+};
+
+const baseMsgMigrateContractResponse: object = {};
+
+export const MsgMigrateContractResponse = {
+  encode(
+    message: MsgMigrateContractResponse,
+    writer: Writer = Writer.create()
+  ): Writer {
+    if (message.data.length !== 0) {
+      writer.uint32(10).bytes(message.data);
+    }
+    return writer;
+  },
+
+  decode(
+    input: Reader | Uint8Array,
+    length?: number
+  ): MsgMigrateContractResponse {
+    const reader = input instanceof Uint8Array ? new Reader(input) : input;
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseMsgMigrateContractResponse,
+    } as MsgMigrateContractResponse;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.data = reader.bytes();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): MsgMigrateContractResponse {
+    const message = {
+      ...baseMsgMigrateContractResponse,
+    } as MsgMigrateContractResponse;
+    if (object.data !== undefined && object.data !== null) {
+      message.data = bytesFromBase64(object.data);
+    }
+    return message;
+  },
+
+  toJSON(message: MsgMigrateContractResponse): unknown {
+    const obj: any = {};
+    message.data !== undefined &&
+      (obj.data = base64FromBytes(
+        message.data !== undefined ? message.data : new Uint8Array()
+      ));
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<MsgMigrateContractResponse>
+  ): MsgMigrateContractResponse {
+    const message = {
+      ...baseMsgMigrateContractResponse,
+    } as MsgMigrateContractResponse;
+    if (object.data !== undefined && object.data !== null) {
+      message.data = object.data;
+    } else {
+      message.data = new Uint8Array();
+    }
+    return message;
+  },
+};
+
 /** Msg defines the Msg service. */
 export interface Msg {
   ExecuteGovernanceVAA(
@@ -710,12 +1200,22 @@ export interface Msg {
   RegisterAccountAsGuardian(
     request: MsgRegisterAccountAsGuardian
   ): Promise<MsgRegisterAccountAsGuardianResponse>;
+  CreateAllowlistEntry(
+    request: MsgCreateAllowlistEntryRequest
+  ): Promise<MsgAllowlistResponse>;
+  DeleteAllowlistEntry(
+    request: MsgDeleteAllowlistEntryRequest
+  ): Promise<MsgAllowlistResponse>;
   /** StoreCode to submit Wasm code to the system */
   StoreCode(request: MsgStoreCode): Promise<MsgStoreCodeResponse>;
   /** Instantiate creates a new smart contract instance for the given code id. */
   InstantiateContract(
     request: MsgInstantiateContract
   ): Promise<MsgInstantiateContractResponse>;
+  /** this line is used by starport scaffolding # proto/tx/rpc */
+  MigrateContract(
+    request: MsgMigrateContract
+  ): Promise<MsgMigrateContractResponse>;
 }
 
 export class MsgClientImpl implements Msg {
@@ -751,6 +1251,34 @@ export class MsgClientImpl implements Msg {
     );
   }
 
+  CreateAllowlistEntry(
+    request: MsgCreateAllowlistEntryRequest
+  ): Promise<MsgAllowlistResponse> {
+    const data = MsgCreateAllowlistEntryRequest.encode(request).finish();
+    const promise = this.rpc.request(
+      "wormhole_foundation.wormchain.wormhole.Msg",
+      "CreateAllowlistEntry",
+      data
+    );
+    return promise.then((data) =>
+      MsgAllowlistResponse.decode(new Reader(data))
+    );
+  }
+
+  DeleteAllowlistEntry(
+    request: MsgDeleteAllowlistEntryRequest
+  ): Promise<MsgAllowlistResponse> {
+    const data = MsgDeleteAllowlistEntryRequest.encode(request).finish();
+    const promise = this.rpc.request(
+      "wormhole_foundation.wormchain.wormhole.Msg",
+      "DeleteAllowlistEntry",
+      data
+    );
+    return promise.then((data) =>
+      MsgAllowlistResponse.decode(new Reader(data))
+    );
+  }
+
   StoreCode(request: MsgStoreCode): Promise<MsgStoreCodeResponse> {
     const data = MsgStoreCode.encode(request).finish();
     const promise = this.rpc.request(
@@ -774,6 +1302,20 @@ export class MsgClientImpl implements Msg {
     );
     return promise.then((data) =>
       MsgInstantiateContractResponse.decode(new Reader(data))
+    );
+  }
+
+  MigrateContract(
+    request: MsgMigrateContract
+  ): Promise<MsgMigrateContractResponse> {
+    const data = MsgMigrateContract.encode(request).finish();
+    const promise = this.rpc.request(
+      "wormhole_foundation.wormchain.wormhole.Msg",
+      "MigrateContract",
+      data
+    );
+    return promise.then((data) =>
+      MsgMigrateContractResponse.decode(new Reader(data))
     );
   }
 }

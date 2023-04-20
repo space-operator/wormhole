@@ -1,11 +1,14 @@
 //@ts-nocheck
 /* eslint-disable */
-import { GuardianSet } from "../wormhole/guardian_set";
+import {
+  GuardianSet,
+  GuardianValidator,
+  ValidatorAllowedAddress,
+} from "../wormhole/guardian";
 import { Config } from "../wormhole/config";
 import { ReplayProtection } from "../wormhole/replay_protection";
 import { SequenceCounter } from "../wormhole/sequence_counter";
 import { ConsensusGuardianSetIndex } from "../wormhole/consensus_guardian_set_index";
-import { GuardianValidator } from "../wormhole/guardian_validator";
 import { Writer, Reader } from "protobufjs/minimal";
 
 export const protobufPackage = "wormhole_foundation.wormchain.wormhole";
@@ -17,8 +20,9 @@ export interface GenesisState {
   replayProtectionList: ReplayProtection[];
   sequenceCounterList: SequenceCounter[];
   consensusGuardianSetIndex: ConsensusGuardianSetIndex | undefined;
-  /** this line is used by starport scaffolding # genesis/proto/state */
   guardianValidatorList: GuardianValidator[];
+  /** this line is used by starport scaffolding # genesis/proto/state */
+  allowedAddresses: ValidatorAllowedAddress[];
 }
 
 const baseGenesisState: object = {};
@@ -46,6 +50,9 @@ export const GenesisState = {
     for (const v of message.guardianValidatorList) {
       GuardianValidator.encode(v!, writer.uint32(50).fork()).ldelim();
     }
+    for (const v of message.allowedAddresses) {
+      ValidatorAllowedAddress.encode(v!, writer.uint32(58).fork()).ldelim();
+    }
     return writer;
   },
 
@@ -57,6 +64,7 @@ export const GenesisState = {
     message.replayProtectionList = [];
     message.sequenceCounterList = [];
     message.guardianValidatorList = [];
+    message.allowedAddresses = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -89,6 +97,11 @@ export const GenesisState = {
             GuardianValidator.decode(reader, reader.uint32())
           );
           break;
+        case 7:
+          message.allowedAddresses.push(
+            ValidatorAllowedAddress.decode(reader, reader.uint32())
+          );
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -103,6 +116,7 @@ export const GenesisState = {
     message.replayProtectionList = [];
     message.sequenceCounterList = [];
     message.guardianValidatorList = [];
+    message.allowedAddresses = [];
     if (
       object.guardianSetList !== undefined &&
       object.guardianSetList !== null
@@ -150,6 +164,14 @@ export const GenesisState = {
         message.guardianValidatorList.push(GuardianValidator.fromJSON(e));
       }
     }
+    if (
+      object.allowedAddresses !== undefined &&
+      object.allowedAddresses !== null
+    ) {
+      for (const e of object.allowedAddresses) {
+        message.allowedAddresses.push(ValidatorAllowedAddress.fromJSON(e));
+      }
+    }
     return message;
   },
 
@@ -189,6 +211,13 @@ export const GenesisState = {
     } else {
       obj.guardianValidatorList = [];
     }
+    if (message.allowedAddresses) {
+      obj.allowedAddresses = message.allowedAddresses.map((e) =>
+        e ? ValidatorAllowedAddress.toJSON(e) : undefined
+      );
+    } else {
+      obj.allowedAddresses = [];
+    }
     return obj;
   },
 
@@ -198,6 +227,7 @@ export const GenesisState = {
     message.replayProtectionList = [];
     message.sequenceCounterList = [];
     message.guardianValidatorList = [];
+    message.allowedAddresses = [];
     if (
       object.guardianSetList !== undefined &&
       object.guardianSetList !== null
@@ -243,6 +273,14 @@ export const GenesisState = {
     ) {
       for (const e of object.guardianValidatorList) {
         message.guardianValidatorList.push(GuardianValidator.fromPartial(e));
+      }
+    }
+    if (
+      object.allowedAddresses !== undefined &&
+      object.allowedAddresses !== null
+    ) {
+      for (const e of object.allowedAddresses) {
+        message.allowedAddresses.push(ValidatorAllowedAddress.fromPartial(e));
       }
     }
     return message;

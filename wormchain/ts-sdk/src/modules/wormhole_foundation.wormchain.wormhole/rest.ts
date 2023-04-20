@@ -120,6 +120,8 @@ export interface WormholeGuardianValidator {
   validatorAddr?: string;
 }
 
+export type WormholeMsgAllowlistResponse = object;
+
 export type WormholeMsgExecuteGovernanceVAAResponse = object;
 
 export interface WormholeMsgInstantiateContractResponse {
@@ -130,11 +132,22 @@ export interface WormholeMsgInstantiateContractResponse {
   data?: string;
 }
 
+/**
+ * MsgMigrateContractResponse returns contract migration result data.
+ */
+export interface WormholeMsgMigrateContractResponse {
+  /** @format byte */
+  data?: string;
+}
+
 export type WormholeMsgRegisterAccountAsGuardianResponse = object;
 
 export interface WormholeMsgStoreCodeResponse {
   /** @format uint64 */
   code_id?: string;
+
+  /** @format byte */
+  checksum?: string;
 }
 
 export interface WormholeQueryAllGuardianSetResponse {
@@ -197,6 +210,21 @@ export interface WormholeQueryAllSequenceCounterResponse {
   pagination?: V1Beta1PageResponse;
 }
 
+export interface WormholeQueryAllValidatorAllowlistResponse {
+  allowlist?: WormholeValidatorAllowedAddress[];
+
+  /**
+   * PageResponse is to be embedded in gRPC response messages where the
+   * corresponding request message has used PageRequest.
+   *
+   *  message SomeResponse {
+   *          repeated Bar results = 1;
+   *          PageResponse page = 2;
+   *  }
+   */
+  pagination?: V1Beta1PageResponse;
+}
+
 export interface WormholeQueryGetConfigResponse {
   Config?: WormholeConfig;
 }
@@ -226,6 +254,22 @@ export interface WormholeQueryLatestGuardianSetIndexResponse {
   latestGuardianSetIndex?: number;
 }
 
+export interface WormholeQueryValidatorAllowlistResponse {
+  validator_address?: string;
+  allowlist?: WormholeValidatorAllowedAddress[];
+
+  /**
+   * PageResponse is to be embedded in gRPC response messages where the
+   * corresponding request message has used PageRequest.
+   *
+   *  message SomeResponse {
+   *          repeated Bar results = 1;
+   *          PageResponse page = 2;
+   *  }
+   */
+  pagination?: V1Beta1PageResponse;
+}
+
 export interface WormholeReplayProtection {
   index?: string;
 }
@@ -235,6 +279,12 @@ export interface WormholeSequenceCounter {
 
   /** @format uint64 */
   sequence?: string;
+}
+
+export interface WormholeValidatorAllowedAddress {
+  validator_address?: string;
+  allowed_address?: string;
+  name?: string;
 }
 
 export type QueryParamsType = Record<string | number, any>;
@@ -433,6 +483,57 @@ export class HttpClient<SecurityDataType = unknown> {
  * @version version not set
  */
 export class Api<SecurityDataType extends unknown> extends HttpClient<SecurityDataType> {
+  /**
+   * No description
+   *
+   * @tags Query
+   * @name QueryAllowlistAll
+   * @request GET:/wormhole_foundation/wormchain/wormhole/allowlist
+   */
+  queryAllowlistAll = (
+    query?: {
+      "pagination.key"?: string;
+      "pagination.offset"?: string;
+      "pagination.limit"?: string;
+      "pagination.count_total"?: boolean;
+      "pagination.reverse"?: boolean;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<WormholeQueryAllValidatorAllowlistResponse, RpcStatus>({
+      path: `/wormhole_foundation/wormchain/wormhole/allowlist`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+
+  /**
+   * No description
+   *
+   * @tags Query
+   * @name QueryAllowlist
+   * @request GET:/wormhole_foundation/wormchain/wormhole/allowlist/{validator_address}
+   */
+  queryAllowlist = (
+    validator_address: string,
+    query?: {
+      "pagination.key"?: string;
+      "pagination.offset"?: string;
+      "pagination.limit"?: string;
+      "pagination.count_total"?: boolean;
+      "pagination.reverse"?: boolean;
+    },
+    params: RequestParams = {},
+  ) =>
+    this.request<WormholeQueryValidatorAllowlistResponse, RpcStatus>({
+      path: `/wormhole_foundation/wormchain/wormhole/allowlist/${validator_address}`,
+      method: "GET",
+      query: query,
+      format: "json",
+      ...params,
+    });
+
   /**
    * No description
    *
