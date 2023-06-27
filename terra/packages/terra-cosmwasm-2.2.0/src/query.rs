@@ -1,19 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::route::TerraRoute;
 use cosmwasm_std::{Coin, CustomQuery, Decimal, Uint128};
 
-/// TerraQueryWrapper is an override of QueryRequest::Custom to access Terra-specific modules
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct TerraQueryWrapper {
-    pub route: TerraRoute,
-    pub query_data: TerraQuery,
-}
-
-// implement custom query
-impl CustomQuery for TerraQueryWrapper {}
+impl CustomQuery for TerraQuery {}
 
 /// TerraQuery is defines available query datas
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
