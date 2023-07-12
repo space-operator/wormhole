@@ -3,6 +3,7 @@ package processor
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -53,7 +54,17 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 	// Note that observations are never tied to the (verified) p2p identity key - the p2p network
 	// identity is completely decoupled from the guardian identity, p2p is just transport.
 
+	// determine if this guardian is responsible for this observation
+	targetIdx := binary.BigEndian.Uint64(m.Hash) % 19 // TODO support variable size guardian set
+	r := (targetIdx + uint64(p.gsIdx)) % 19
+	if r > 7 {
+		// we're not going to deal with this one
+		//p.logger.Warn("skipping observation", zap.String("hash", hex.EncodeToString(m.Hash)), zap.Uint64("targetIdx", targetIdx), zap.Uint64("r", r))
+		return
+	}
+
 	hash := hex.EncodeToString(m.Hash)
+
 	s := p.state.signatures[hash]
 	if s != nil && s.settled {
 		// already settled; ignoring additional signatures for it.

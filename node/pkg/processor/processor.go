@@ -105,6 +105,8 @@ type Processor struct {
 
 	// gs is the currently valid guardian set
 	gs *common.GuardianSet
+	// gsIdx is this node's index in the guardian set
+	gsIdx int
 	// gst is managed by the processor and allows concurrent access to the
 	// guardian set by other components.
 	gst *common.GuardianSetState
@@ -175,10 +177,18 @@ func (p *Processor) Run(ctx context.Context) error {
 				p.acct.Close()
 			}
 			return ctx.Err()
-		case p.gs = <-p.setC:
+		case gs := <-p.setC:
+			gsIdx, ok := gs.KeyIndex(p.ourAddr)
+			if !ok {
+				p.logger.Fatal("new guardian set does not contain this guardian")
+			}
+			p.gs = gs
+			p.gsIdx = gsIdx
+
 			p.logger.Info("guardian set updated",
 				zap.Strings("set", p.gs.KeysAsHexStrings()),
-				zap.Uint32("index", p.gs.Index))
+				zap.Uint32("index", p.gs.Index),
+				zap.Int("index", p.gsIdx))
 			p.gst.Set(p.gs)
 		case k := <-p.msgC:
 			if p.governor != nil {

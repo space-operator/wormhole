@@ -358,8 +358,10 @@ var someMsgEmitterChain vaa.ChainID = vaa.ChainIDSolana
 
 func someMessage() *common.MessagePublication {
 	someMsgSequenceCounter++
+	txHash := [32]byte{}
+	binary.LittleEndian.PutUint64(txHash[:], someMsgSequenceCounter)
 	return &common.MessagePublication{
-		TxHash:           [32]byte{byte(someMsgSequenceCounter % 8), byte(someMsgSequenceCounter / 8), 3},
+		TxHash:           txHash,
 		Timestamp:        randomTime(),
 		Nonce:            math_rand.Uint32(), //nolint
 		Sequence:         someMsgSequenceCounter,
