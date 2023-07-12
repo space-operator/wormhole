@@ -273,7 +273,25 @@ func Run(
 		topic := fmt.Sprintf("%s/%s", networkID, "broadcast")
 
 		logger.Info("Subscribing pubsub topic", zap.String("topic", topic))
-		ps, err := pubsub.NewGossipSub(ctx, h)
+
+		gossipParams := pubsub.DefaultGossipSubParams()
+
+		gossipParams.D = 2    // default: 6
+		gossipParams.Dlo = 1  // default: 5
+		gossipParams.Dhi = 3  // default: 12
+		gossipParams.Dout = 1 // default: 2
+		//gossipParams.HeartbeatInterval = 100 * time.Millisecond // default: 1 * time.Second
+
+		ps, err := pubsub.NewGossipSub(ctx, h,
+			pubsub.WithPeerOutboundQueueSize(1000000),
+			pubsub.WithValidateQueueSize(1000000),
+			pubsub.WithGossipSubParams(gossipParams),
+			//pubsub.WithMessageSigning(false),
+			//pubsub.WithStrictSignatureVerification(false),
+			pubsub.WithValidateWorkers(3),
+		)
+
+		//ps, err := pubsub.NewGossipSub(ctx, h)
 		if err != nil {
 			panic(err)
 		}
