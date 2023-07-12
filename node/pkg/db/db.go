@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/certusone/wormhole/node/pkg/common"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -64,6 +65,14 @@ func VaaIDFromVAA(v *vaa.VAA) *VAAID {
 		EmitterChain:   v.EmitterChain,
 		EmitterAddress: v.EmitterAddress,
 		Sequence:       v.Sequence,
+	}
+}
+
+func VaaIDFromMessage(msg *common.MessagePublication) *VAAID {
+	return &VAAID{
+		EmitterChain:   msg.EmitterChain,
+		EmitterAddress: msg.EmitterAddress,
+		Sequence:       msg.Sequence,
 	}
 }
 
@@ -126,6 +135,17 @@ func (d *Database) StoreSignedVAA(v *vaa.VAA) error {
 	storedVaaTotal.Inc()
 
 	return nil
+}
+
+func (d *Database) HasVAA(id VAAID) bool {
+	err := d.db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(id.Bytes())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err == nil
 }
 
 func (d *Database) GetSignedVAABytes(id VAAID) (b []byte, err error) {

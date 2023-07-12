@@ -12,6 +12,7 @@ import (
 	gossipv1 "github.com/certusone/wormhole/node/pkg/proto/gossip/v1"
 	"github.com/certusone/wormhole/node/pkg/reporter"
 	"github.com/certusone/wormhole/node/pkg/supervisor"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -20,7 +21,7 @@ import (
 const (
 	gossipSendBufferSize                 = 5000
 	inboundObservationBufferSize         = 5000
-	inboundSignedVaaBufferSize           = 500
+	inboundSignedVaaBufferSize           = 1000
 	observationRequestOutboundBufferSize = 500
 	observationRequestInboundBufferSize  = 500
 	// observationRequestBufferSize is the buffer size of the per-network reobservation channel
@@ -95,7 +96,7 @@ func (g *G) initializeBasic(logger *zap.Logger, rootCtxCancel context.CancelFunc
 	g.acctC = makeChannelPair[*common.MessagePublication](accountant.MsgChannelCapacity)
 
 	// Guardian set state managed by processor
-	g.gst = common.NewGuardianSetState(nil)
+	g.gst = common.NewGuardianSetStateForGuardian(ethcrypto.PubkeyToAddress(g.gk.PublicKey), nil)
 
 	// provides methods for reporting progress toward message attestation, and channels for receiving attestation lifecycle events.
 	g.attestationEvents = reporter.EventListener(logger)

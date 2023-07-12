@@ -14,8 +14,8 @@ import (
 	math_rand "math/rand"
 	"net/http"
 	"os"
-	"path"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,6 +63,9 @@ const WAIT_FOR_METRICS = false
 
 // The level at which logs will be written to console; During testing, logs are produced and buffered at Info level, because some tests need to look for certain entries.
 var CONSOLE_LOG_LEVEL = zap.InfoLevel
+
+var PROCESSOR_VERSION uint = 3
+var PROCESSOR_CPU = runtime.NumCPU() / 2
 
 var TEST_ID_CTR atomic.Uint32
 
@@ -140,9 +143,9 @@ func mockGuardianRunnable(gs []*mockGuardian, mockGuardianIndex uint, obsDb mock
 		logger := supervisor.Logger(ctx)
 
 		// setup db
-		dataDir := fmt.Sprintf("/tmp/test_guardian_%d", mockGuardianIndex)
-		_ = os.RemoveAll(dataDir) // delete any pre-existing data
-		db := db.OpenDb(logger, &dataDir)
+		//dataDir := fmt.Sprintf("/tmp/test_guardian_%d", mockGuardianIndex)
+		//_ = os.RemoveAll(dataDir) // delete any pre-existing data
+		db := db.OpenDb(logger, nil)
 		defer db.Close()
 
 		// set environment
@@ -185,10 +188,17 @@ func mockGuardianRunnable(gs []*mockGuardian, mockGuardianIndex uint, obsDb mock
 			GuardianOptionP2P(gs[mockGuardianIndex].p2pKey, networkID, bootstrapPeers, nodeName, false, cfg.p2pPort, func() string { return "" }),
 			GuardianOptionPublicRpcSocket(cfg.publicSocket, publicRpcLogDetail),
 			GuardianOptionPublicrpcTcpService(cfg.publicRpc, publicRpcLogDetail),
-			GuardianOptionPublicWeb(cfg.publicWeb, cfg.publicSocket, "", false, path.Join(dataDir, "autocert")),
+			GuardianOptionPublicWeb(cfg.publicWeb, cfg.publicSocket, "", false, ""),
 			GuardianOptionAdminService(cfg.adminSocket, nil, nil, rpcMap),
 			GuardianOptionStatusServer(fmt.Sprintf("[::]:%d", cfg.statusPort)),
-			GuardianOptionProcessor(),
+		}
+
+		if PROCESSOR_VERSION == 1 {
+			guardianOptions = append(guardianOptions, GuardianOptionProcessor())
+		} else if PROCESSOR_VERSION == 3 {
+			guardianOptions = append(guardianOptions, GuardianOptionProcessor3(PROCESSOR_CPU))
+		} else {
+			return errors.New("unsupported processor version")
 		}
 
 		guardianNode := NewGuardianNode(
@@ -203,7 +213,7 @@ func mockGuardianRunnable(gs []*mockGuardian, mockGuardianIndex uint, obsDb mock
 		<-ctx.Done()
 		time.Sleep(time.Second * 1) // Wait 1s for all sorts of things to complete.
 		db.Close()                  // close BadgerDb
-		_ = os.RemoveAll(dataDir)   // cleanup disk
+		//_ = os.RemoveAll(dataDir)   // cleanup disk
 
 		return nil
 	}
@@ -696,7 +706,7 @@ func testConsensus(t *testing.T, testCases []testCase, numGuardians int) {
 		for i, testCase := range testCases {
 			msg := testCase.msg
 
-			logger.Info("Checking result of testcase", zap.Int("test_case", i))
+			logger.Info("Checking result of testcase", zap.Int("test_case", i), zap.String("msgId", msg.MessageIDString()))
 
 			// poll the API until we get a response without error
 			msgId := &publicrpcv1.MessageID{
@@ -998,7 +1008,11 @@ func BenchmarkConsensus(b *testing.B) {
 	//CONSOLE_LOG_LEVEL = zap.DebugLevel
 	//CONSOLE_LOG_LEVEL = zap.InfoLevel
 	CONSOLE_LOG_LEVEL = zap.WarnLevel
-	benchmarkConsensus(b, "1", 19, 1000, 50) // ~6.5s
+	PROCESSOR_VERSION = 1
+	PROCESSOR_CPU = 8
+	benchmarkConsensus(b, "1", 19, 3000, 20) // ~7.9s (processor3) / ~11.3s (processor1) -- without p2p signature verification
+	//benchmarkConsensus(b, "1", 8, 30000, 20) // ~23.7s (processor3) / ~43.6s (processor1) -- without p2p signature verification
+	//benchmarkConsensus(b, "1", 8, 30000, 20) // ~31.3s (processor3) / ~44.6s (processor1) -- with p2p signature verification
 	//benchmarkConsensus(b, "1", 19, 1000, 5) // ~10s
 	//benchmarkConsensus(b, "1", 19, 1000, 1) // ~13s
 }

@@ -30,13 +30,19 @@ func (l badgerZapLogger) Debugf(f string, v ...interface{}) {
 }
 
 func OpenDb(logger *zap.Logger, dataDir *string) *Database {
-	dbPath := path.Join(*dataDir, "db")
-	if err := os.MkdirAll(dbPath, 0700); err != nil {
-		logger.Fatal("failed to create database directory", zap.Error(err))
-	}
+	var options badger.Options
 
-	options := badger.DefaultOptions(dbPath)
-	options.Logger = badgerZapLogger{logger}
+	if dataDir != nil {
+		dbPath := path.Join(*dataDir, "db")
+		if err := os.MkdirAll(dbPath, 0700); err != nil {
+			logger.Fatal("failed to create database directory", zap.Error(err))
+		}
+
+		options = badger.DefaultOptions(dbPath)
+	} else {
+		options = badger.DefaultOptions("").WithInMemory(true)
+	}
+	options = options.WithLogger(badgerZapLogger{logger})
 
 	db, err := badger.Open(options)
 	if err != nil {

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
-	ethCrypto "github.com/ethereum/go-ethereum/crypto"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	sdktx "github.com/cosmos/cosmos-sdk/types/tx"
@@ -101,10 +101,10 @@ func newAccountantForTest(
 ) *Accountant {
 	var db db.MockAccountantDB
 
-	gk := devnet.InsecureDeterministicEcdsaKeyByIndex(ethCrypto.S256(), uint64(0))
+	gk := devnet.InsecureDeterministicEcdsaKeyByIndex(ethcrypto.S256(), uint64(0))
 
-	gst := common.NewGuardianSetState(nil)
-	gs := &common.GuardianSet{Keys: []ethCommon.Address{ethCommon.HexToAddress("0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe")}}
+	gst := common.NewGuardianSetStateForGuardian(ethcrypto.PubkeyToAddress(gk.PublicKey), nil)
+	gs := &common.GuardianSet{Keys: []ethcommon.Address{ethcommon.HexToAddress("0xbeFA429d57cD18b7F8A4d91A2da9AB4AF05d0FBe")}}
 	gst.Set(gs)
 
 	env := common.GoTest
@@ -133,12 +133,12 @@ func newAccountantForTest(
 }
 
 // Converts a string into a go-ethereum Hash object used as test input.
-func hashFromString(str string) ethCommon.Hash { //nolint:unparam
+func hashFromString(str string) ethcommon.Hash { //nolint:unparam
 	if (len(str) > 2) && (str[0] == '0') && (str[1] == 'x') {
 		str = str[2:]
 	}
 
-	return ethCommon.HexToHash(str)
+	return ethcommon.HexToHash(str)
 }
 
 // Note this method assumes 18 decimals for the amount.

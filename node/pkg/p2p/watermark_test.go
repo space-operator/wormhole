@@ -69,7 +69,7 @@ func NewG(t *testing.T, nodeName string) *G {
 		signedInC:              make(chan *gossipv1.SignedVAAWithQuorum, cs),
 		priv:                   p2ppriv,
 		gk:                     guardianpriv,
-		gst:                    node_common.NewGuardianSetState(nil),
+		gst:                    node_common.NewGuardianSetStateForGuardian(crypto.PubkeyToAddress(guardianpriv.PublicKey), nil),
 		nodeName:               nodeName,
 		disableHeartbeatVerify: false,
 		rootCtxCancel:          nil,
