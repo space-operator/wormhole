@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	gossipv1 "github.com/certusone/wormhole/node/pkg/proto/gossip/v1"
 	"github.com/wormhole-foundation/wormhole/sdk/vaa"
@@ -53,15 +54,22 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 	// identity is completely decoupled from the guardian identity, p2p is just transport.
 
 	hash := hex.EncodeToString(m.Hash)
+	s := p.state.signatures[hash]
+	if s != nil && s.settled {
+		// already settled; ignoring additional signatures for it.
+		return
+	}
 
-	p.logger.Debug("received observation",
-		zap.String("digest", hash),
-		zap.String("signature", hex.EncodeToString(m.Signature)),
-		zap.String("addr", hex.EncodeToString(m.Addr)),
-		zap.String("txhash", hex.EncodeToString(m.TxHash)),
-		zap.String("txhash_b58", base58.Encode(m.TxHash)),
-		zap.String("message_id", m.MessageId),
-	)
+	if p.logger.Core().Enabled(zapcore.DebugLevel) {
+		p.logger.Debug("received observation",
+			zap.String("digest", hash),
+			zap.String("signature", hex.EncodeToString(m.Signature)),
+			zap.String("addr", hex.EncodeToString(m.Addr)),
+			zap.String("txhash", hex.EncodeToString(m.TxHash)),
+			zap.String("txhash_b58", base58.Encode(m.TxHash)),
+			zap.String("message_id", m.MessageId),
+		)
+	}
 
 	observationsReceivedTotal.Inc()
 
@@ -109,8 +117,8 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 	// During an update, vaaState.signatures can contain signatures from *both* guardian sets.
 	//
 	var gs *node_common.GuardianSet
-	if p.state.signatures[hash] != nil && p.state.signatures[hash].gs != nil {
-		gs = p.state.signatures[hash].gs
+	if s != nil && s.gs != nil {
+		gs = s.gs
 	} else {
 		gs = p.gs
 	}
@@ -134,7 +142,7 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 			zap.String("digest", hash),
 			zap.String("their_addr", their_addr.Hex()),
 			zap.Uint32("index", gs.Index),
-			zap.Any("keys", gs.KeysAsHexStrings()),
+			//zap.Any("keys", gs.KeysAsHexStrings()),
 		)
 		observationsFailedTotal.WithLabelValues("unknown_guardian").Inc()
 		return
@@ -148,7 +156,7 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 	observationsReceivedByGuardianAddressTotal.WithLabelValues(their_addr.Hex()).Inc()
 
 	// []byte isn't hashable in a map. Paying a small extra cost for encoding for easier debugging.
-	if p.state.signatures[hash] == nil {
+	if s == nil {
 		// We haven't yet seen this event ourselves, and therefore do not know what the VAA looks like.
 		// However, we have established that a valid guardian has signed it, and therefore we can
 		// already start aggregating signatures for it.
@@ -159,24 +167,26 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 
 		observationsUnknownTotal.Inc()
 
-		p.state.signatures[hash] = &state{
+		s = &state{
 			firstObserved: time.Now(),
 			signatures:    map[common.Address][]byte{},
 			source:        "unknown",
 		}
+
+		p.state.signatures[hash] = s
 	}
 
-	p.state.signatures[hash].signatures[their_addr] = m.Signature
+	s.signatures[their_addr] = m.Signature
 
 	// Aggregate all valid signatures into a list of vaa.Signature and construct signed VAA.
 	agg := make([]bool, len(gs.Keys))
 	var sigs []*vaa.Signature
 	for i, a := range gs.Keys {
-		s, ok := p.state.signatures[hash].signatures[a]
+		sig, ok := s.signatures[a]
 
 		if ok {
 			var bs [65]byte
-			if n := copy(bs[:], s); n != 65 {
+			if n := copy(bs[:], sig); n != 65 {
 				panic(fmt.Sprintf("invalid sig len: %d", n))
 			}
 
@@ -189,7 +199,7 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 		agg[i] = ok
 	}
 
-	if p.state.signatures[hash].ourObservation != nil {
+	if s.ourObservation != nil {
 		// We have made this observation on chain!
 
 		// 2/3+ majority required for VAA to be valid - wait until we have quorum to submit VAA.
@@ -197,7 +207,7 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 
 		p.logger.Debug("aggregation state for observation", // 1.3M out of 3M info messages / hour / guardian
 			zap.String("digest", hash),
-			zap.Any("set", gs.KeysAsHexStrings()),
+			//zap.Any("set", gs.KeysAsHexStrings()),
 			zap.Uint32("index", gs.Index),
 			zap.Bools("aggregation", agg),
 			zap.Int("required_sigs", quorum),
@@ -205,8 +215,8 @@ func (p *Processor) handleObservation(ctx context.Context, m *gossipv1.SignedObs
 			zap.Bool("quorum", len(sigs) >= quorum),
 		)
 
-		if len(sigs) >= quorum && !p.state.signatures[hash].submitted {
-			p.state.signatures[hash].ourObservation.HandleQuorum(sigs, hash, p)
+		if len(sigs) >= quorum && !s.submitted {
+			s.ourObservation.HandleQuorum(sigs, hash, p)
 		} else {
 			p.logger.Debug("quorum not met or already submitted, doing nothing", // 1.2M out of 3M info messages / hour / guardian
 				zap.String("digest", hash))
